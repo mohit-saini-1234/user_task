@@ -17,20 +17,20 @@ from app.util import serialize_doc
 bp = Blueprint('tasks', __name__, url_prefix='')
 
 
-@bp.route('/task_collection', methods=['POST'])
+@bp.route('/creat_users', methods=['POST'])
 @manager_required
-def task_collection():
+def users_tasks():
     task = request.json.get("task", None)
     description = request.json.get("description", None)
 
     if not task or not description :
            return jsonify({"msg": "Invalid Request"}), 400
-    check_task = mongo.db.all_task.count({
+    check_task = mongo.db.tasks.count({
        "task" : task 
    })
     if check_task > 0 :
        return jsonify({"msg": "task already in collection"}), 500
-    id = mongo.db.all_task.insert_one({
+    id = mongo.db.tasks.insert_one({
        "task": task,
        "description" : description
    }).inserted_id
@@ -55,14 +55,13 @@ def assign_tasks():
    if not user_id or not task_id :
        return jsonify({"msg": "Invalid Request"}), 400
  
-   check_task = mongo.db.all_task.count({
+   check_task = mongo.db.tasks.count({
        "task_id" : task_id 
    })
    if check_task > 0 :
-       return jsonify({"msg": "task already assign"}), 500
-
+     return jsonify({"msg": "task already assigned to someone user"}), 500
     
-   id = mongo.db.all_task.insert_one({
+   id = mongo.db.tasks.insert_one({
        "user_id": user_id,
        "due" : due,
        "task_id" : task_id ,
@@ -90,7 +89,7 @@ def task_update(id):
     
     
     # match with Object ID
-    ret = mongo.db.all_task.update({
+    ret = mongo.db.tasks.update({
         "_id": ObjectId(id)
     }, {
         "$set": update_json
@@ -104,58 +103,93 @@ def assigned_update(id):
         abort(500)
     user_id = request.json.get("user_id", None)
     due = request.json.get("due", None)
-    task_id = request.json.get("task_id ")
+    task_id = request.json.get("task_id" , None)
 
     if user_id is None or  task_id is None :
-        return jsonify(message="Invalid Request"), 500
+        return jsonify(message="Invalid put Request"), 500
+    
+    update_json = {}
+
+    if user_id is not None:
+        update_json["user_id"] = user_id
     
     if due is not None:
-        update_json["due"] = datetime.datetime.strptime(due, "%d-%m-%Y")
+        update_json["due"] = due
     
     if task_id is not None:
         update_json["task_id"] = task_id
     
-    ret = mongo.db.all_task.update({
+    ret = mongo.db.tasks.update({
         "_id": ObjectId(id)
     }, {
         "$set": update_json
     }, upsert=False)
     return jsonify(str(ret))
 
+
+
+@bp.route("/status_update/<string:id>", methods=['PUT'])
+@jwt_required
+def userStatus_update(id):
+
+    if not request.json:
+        abort(500)
+
+    status = request.json.get("status", None)
+    
+    update_json = {}
+
+    if status is not None:
+        update_json["status"] = status
+    
+    # match with Object ID
+    ret = mongo.db.tasks.update({
+        "_id": ObjectId(id)
+    }, {
+        "$set": update_json
+    }, upsert=False)
+    return jsonify(str(ret))
+
+
 @bp.route("/get_task", methods=["GET"])
 @jwt_required
 def get_task():
 
     user_id = request.json.get("user_id", None)
-    q = mongo.db.all_task.find({
+    q = mongo.db.tasks.find({
         "user_id" : user_id
     })  
-    tasks = []
-    for x in q:
-        tasks.append(serialize_doc(x))
+    tasks = [serialize_doc(doc) for doc in q]
     return jsonify(tasks) 
 
 @bp.route("/task_info/<string:id>", methods=["GET"])
 @jwt_required
 def task_info(id):
-    q = mongo.db.all_task.find({
+    q = mongo.db.tasks.find({
         "_id" : ObjectId(id)
     })  
-    tasks = []
-    for x in q:
-        
-       tasks.append(serialize_doc(x))
+    tasks = [serialize_doc(doc) for doc in q]
     return jsonify(tasks) 
 
-@bp.route("/delete/<string:id>", methods=["DELETE"])
+@bp.route("/del_users/<string:id>", methods=["DELETE"])
 @manager_required
-def delete_todo(id):
+def delete_users(id):
 
-    ret = mongo.db.all_task.remove({
+    ret = mongo.db.users.remove({
         "_id" : ObjectId(id)
     })
 
     return jsonify(str(ret))  
+
+@bp.route("/del_tasks/<string:id>", methods=["DELETE"])
+@manager_required
+def delete_tasks(id):
+
+    ret = mongo.db.tasks.remove({
+        "_id" : ObjectId(id)
+    })
+
+    return jsonify(str(ret)) 
  
 
    
