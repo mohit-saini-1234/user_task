@@ -59,7 +59,7 @@ def assign_tasks():
        "task_id" : task_id 
    })
    if check_task > 0 :
-     return jsonify({"msg": "task already assigned to someone user"}), 500
+     return jsonify({"msg": "task already assigned to someone "}), 500
     
    id = mongo.db.tasks.insert_one({
        "user_id": user_id,
