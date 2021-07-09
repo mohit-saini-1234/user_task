@@ -153,7 +153,7 @@ def userStatus_update(id):
 
 @bp.route("/get_task", methods=["GET"])
 @jwt_required
-def get_task():
+def userGet_task():
 
     user_id = request.json.get("user_id", None)
     q = mongo.db.tasks.find({
